@@ -6,8 +6,10 @@
 
   <ItemGroup>
     <PackageReference Include="Hangfire.Core" Version="1.7.6" />
-    <PackageReference Include="Microsoft.Azure.Storage.Table" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Azure.Storage.Blob" Version="11.0.0" />
     <PackageReference Include="Microsoft.Azure.Storage.Queue" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.4" />
+    
   </ItemGroup>
 
 </Project>

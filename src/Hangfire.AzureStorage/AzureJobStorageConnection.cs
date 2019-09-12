@@ -2,23 +2,58 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Hangfire.Annotations;
+using Hangfire.AzureStorage.Entities;
 using Hangfire.Common;
 using Hangfire.Server;
 using Hangfire.Storage;
+using Microsoft.Azure.Cosmos.Table;
+using Newtonsoft.Json;
 
 namespace Hangfire.AzureStorage
 {
     public class AzureJobStorageConnection : IStorageConnection
     {
+        private bool _disposedValue = false; // To detect redundant calls
+        private readonly IAzureJobStorageInternal _storage;
+
+
+        public AzureJobStorageConnection(IAzureJobStorageInternal storage)
+        {
+            _storage = storage;
+        }
         public IDisposable AcquireDistributedLock(string resource, TimeSpan timeout)
         {
+            // this is based on https://medium.com/@fbeltrao/distributed-locking-in-azure-functions-bc4517c0306c
             throw new NotImplementedException();
         }
 
+
+      
+
+        /// <summary>
+        /// Creates or updates the existance of a server in table storage
+        /// </summary>
+        /// <param name="serverId"></param>
+        /// <param name="context"></param>
         public void AnnounceServer(string serverId, ServerContext context)
         {
-            throw new NotImplementedException();
+            if (serverId == null) throw new ArgumentNullException(nameof(serverId));
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            var data = new ServerEntity
+            {
+                PartitionKey = "All",
+                RowKey = serverId,
+                WorkerCount = context.WorkerCount,
+                Queues = JsonConvert.SerializeObject(context.Queues),
+                StartedAt = DateTime.UtcNow,
+                LastHeartbeat = DateTime.UtcNow
+            };
+            
+            _storage.Servers.Execute(TableOperation.InsertOrMerge(data));
         }
+
+      
 
         public string CreateExpiredJob(Job job, IDictionary<string, string> parameters, DateTime createdAt, TimeSpan expireIn)
         {
@@ -27,11 +62,13 @@ namespace Hangfire.AzureStorage
 
         public IWriteOnlyTransaction CreateWriteTransaction()
         {
+            // this is a big thing, it handles counters and job updates
             throw new NotImplementedException();
         }
 
         public IFetchedJob FetchNextJob(string[] queues, CancellationToken cancellationToken)
         {
+            // defer to azure queues
             throw new NotImplementedException();
         }
 
@@ -42,7 +79,8 @@ namespace Hangfire.AzureStorage
 
         public HashSet<string> GetAllItemsFromSet([NotNull] string key)
         {
-            throw new NotImplementedException();
+            // get all the keys for a partition
+            _storage.Sets.ExecuteQuery(TableQuery)
         }
 
         public string GetFirstByLowestScoreFromSet(string key, double fromScore, double toScore)
@@ -91,11 +129,10 @@ namespace Hangfire.AzureStorage
         }
 
         #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
+        
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposedValue)
             {
                 if (disposing)
                 {
@@ -105,7 +142,7 @@ namespace Hangfire.AzureStorage
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                disposedValue = true;
+                _disposedValue = true;
             }
         }
 

@@ -27,7 +27,7 @@ namespace Hangfire.AzureStorage
             throw new NotImplementedException();
         }
 
-
+        public IAzureJobStorageInternal Storage => _storage;
       
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace Hangfire.AzureStorage
         public IWriteOnlyTransaction CreateWriteTransaction()
         {
             // this is a big thing, it handles counters and job updates
-            throw new NotImplementedException();
+            return new AzureWriteOnlyTransaction(this);
         }
 
         public IFetchedJob FetchNextJob(string[] queues, CancellationToken cancellationToken)
@@ -79,8 +79,20 @@ namespace Hangfire.AzureStorage
 
         public HashSet<string> GetAllItemsFromSet([NotNull] string key)
         {
-            // get all the keys for a partition
-            _storage.Sets.ExecuteQuery(TableQuery)
+            var query = new TableQuery<SetEntity>().Where(TableQuery.GenerateFilterCondition(nameof(SetEntity.PartitionKey), QueryComparisons.Equal, key));
+            TableContinuationToken token = null;
+
+            var results = new HashSet<string>();
+            do
+            {
+                var segment = _storage.Sets.ExecuteQuerySegmented(query, token);
+                foreach (var result in segment.Results)
+                    results.Add(result.RowKey);
+
+                token = segment.ContinuationToken;
+            } while (token != null);
+
+            return results;
         }
 
         public string GetFirstByLowestScoreFromSet(string key, double fromScore, double toScore)

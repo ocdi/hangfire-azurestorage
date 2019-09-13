@@ -1,13 +1,20 @@
 using System;
+using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
 
 namespace Hangfire.AzureStorage
 {
     public class AzureBlobDistributedLock 
     {
-        public AzureBlobDistributedLock(CloudBlob)
+        private readonly CloudBlobClient _client;
+        private readonly CloudBlobContainer _ref;
+
+        public AzureBlobDistributedLock(CloudBlobClient client)
         {
-            
+            _client = client;
+            _ref = _client.GetContainerReference("locks");
         }
 
 
@@ -21,11 +28,11 @@ namespace Hangfire.AzureStorage
         public async Task<bool> TryAdquireLeaseAsync(string id, TimeSpan throttleTime, string leaseId)
         {
             // TODO: make this smarter, call only if the container does not exists
-            await this.containerReference.CreateIfNotExistsAsync();
+            await _ref.CreateIfNotExistsAsync();
 
 
             // create blob if not exists
-            var blob = this.containerReference.GetAppendBlobReference(id);
+            var blob = _ref.GetAppendBlobReference(id);
             try
             {
                 await blob.CreateOrReplaceAsync(

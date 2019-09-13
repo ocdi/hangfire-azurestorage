@@ -8,6 +8,6 @@ namespace Hangfire.AzureStorage.Entities
     /// </summary>
         public class SetEntity : TableEntity
     {
-        
+        public double? Score { get; set; }
     }
 }

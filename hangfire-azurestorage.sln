@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{220981A4-9B1
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.AzureStorage", "src\Hangfire.AzureStorage\Hangfire.AzureStorage.csproj", "{B3E06D79-4B31-409E-A535-7BC865B895DB}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{9686C525-0456-481F-83CA-C7DB1D5854BF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.AzureStorage.Tests", "tests\Hangfire.AzureStorage.Tests\Hangfire.AzureStorage.Tests.csproj", "{4587D848-07DB-4166-9C03-711A7C5864F6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,8 +36,21 @@ Global
 		{B3E06D79-4B31-409E-A535-7BC865B895DB}.Release|x64.Build.0 = Release|Any CPU
 		{B3E06D79-4B31-409E-A535-7BC865B895DB}.Release|x86.ActiveCfg = Release|Any CPU
 		{B3E06D79-4B31-409E-A535-7BC865B895DB}.Release|x86.Build.0 = Release|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Debug|x64.Build.0 = Debug|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Debug|x86.Build.0 = Debug|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Release|x64.ActiveCfg = Release|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Release|x64.Build.0 = Release|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Release|x86.ActiveCfg = Release|Any CPU
+		{4587D848-07DB-4166-9C03-711A7C5864F6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{B3E06D79-4B31-409E-A535-7BC865B895DB} = {220981A4-9B17-417E-96DA-F9694CF78C03}
+		{4587D848-07DB-4166-9C03-711A7C5864F6} = {9686C525-0456-481F-83CA-C7DB1D5854BF}
 	EndGlobalSection
 EndGlobal

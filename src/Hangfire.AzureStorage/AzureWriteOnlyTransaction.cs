@@ -6,6 +6,7 @@ using Hangfire.AzureStorage.Entities;
 using Hangfire.States;
 using Hangfire.Storage;
 using Microsoft.Azure.Cosmos.Table;
+using Microsoft.Azure.Storage.Queue;
 using Newtonsoft.Json;
 
 namespace Hangfire.AzureStorage
@@ -70,7 +71,7 @@ namespace Hangfire.AzureStorage
 
         public void AddToQueue([NotNull] string queue, [NotNull] string jobId)
         {
-            throw new NotImplementedException();
+            _actions.Enqueue(() => _storage.Storage.Queue(queue).AddMessage(new CloudQueueMessage(jobId)));
         }
 
         public void AddToSet([NotNull] string key, [NotNull] string value) => AddToSet(key, value, 0.0);
@@ -133,15 +134,25 @@ namespace Hangfire.AzureStorage
         public void ExpireJob([NotNull] string jobId, TimeSpan expireIn)
         {
             // this sets an expiry date for a job in the timespan specified
-            throw new NotImplementedException();
+            SetJobExpiry(jobId, DateTime.UtcNow.Add(expireIn));
         }
 
 
         public void PersistJob([NotNull] string jobId)
         {
             // this removes expiry for a job
-            throw new NotImplementedException();
+            SetJobExpiry(jobId, DateTime.MaxValue);
         }
+
+        private void SetJobExpiry(string jobId, DateTime expiry) => _actions.Enqueue(() =>
+        {
+            _storage.Storage.Jobs.Execute(TableOperation.InsertOrMerge(new JobEntity
+            {
+                PartitionKey = _storage.PartitionKeyForJob(jobId),
+                RowKey = jobId,
+                ExpireAt = expiry
+            }));
+        });
 
         public void RemoveFromList([NotNull] string key, [NotNull] string value)
         {

@@ -10,6 +10,7 @@ using Hangfire.Storage;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.Storage.Queue;
 using Newtonsoft.Json;
 
 namespace Hangfire.AzureStorage
@@ -114,7 +115,7 @@ namespace Hangfire.AzureStorage
                 RowKey = jobId,
                 State = "INITIAL",
                 CreatedAt = createdAt,
-                ExpireIn = expireIn
+                ExpireAt = DateTime.UtcNow.Add(expireIn)
             }));
 
             return jobId;
@@ -131,8 +132,36 @@ namespace Hangfire.AzureStorage
 
         public IFetchedJob FetchNextJob(string[] queues, CancellationToken cancellationToken)
         {
-            // defer to azure queues
-            throw new NotImplementedException();
+            // the worker will request jobs for all of these queues
+            // we should return the first available, rotating through the queues
+            var references = queues.Select(Storage.Queue).ToArray();
+
+            CloudQueueMessage message = null;
+
+            var currentQueueIndex = 0;
+
+            do
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                message = references[currentQueueIndex].GetMessage(Storage.Options.VisibilityTimeout);
+
+                if (message == null)
+                {
+                    if (currentQueueIndex == references.Length - 1)
+                    {
+                        cancellationToken.WaitHandle.WaitOne(Storage.Options.QueuePollInterval);
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+
+                    currentQueueIndex = (currentQueueIndex + 1) % queues.Length;
+                }
+
+            } while (message == null);
+
+
+            // todo return this (!)
+            return null ;
         }
 
         public Dictionary<string, string> GetAllEntriesFromHash([NotNull] string key)
@@ -336,4 +365,15 @@ namespace Hangfire.AzureStorage
 
     }
 
+
+
+    public class AzureQueueFetchedJob : IFetchedJob
+    {
+        public string JobId { get; }
+
+        public void Dispose() => throw new NotImplementedException();
+        public void RemoveFromQueue() => throw new NotImplementedException();
+        public void Requeue() => throw new NotImplementedException();
+    }
 }
+

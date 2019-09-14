@@ -9,6 +9,7 @@ using Hangfire.Storage.Monitoring;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.Cosmos.Table;
+using System.Collections.Concurrent;
 
 namespace Hangfire.AzureStorage
 {
@@ -29,6 +30,8 @@ namespace Hangfire.AzureStorage
         /// Stores the larger job information in blob storage
         /// </summary>
         CloudBlobContainer JobsContainer { get; }
+
+        CloudQueue Queue(string queue);
     }
 
     public class AzureJobStorage : JobStorage, IAzureJobStorageInternal
@@ -79,6 +82,15 @@ namespace Hangfire.AzureStorage
         CloudTable IAzureJobStorageInternal.Jobs => GetTable(JOBS_TABLE);
 
         CloudBlobContainer IAzureJobStorageInternal.JobsContainer => GetContainer(JOB_CONTAINER);
+
+        
+        
+        CloudQueue IAzureJobStorageInternal.Queue(string queue)
+        {
+            var reference = _queueClient.GetQueueReference($"{_options.Prefix?.ToLowerInvariant()}{queue}");
+            reference.CreateIfNotExists();
+            return reference;
+        }
 
         public override IStorageConnection GetConnection() => new AzureJobStorageConnection(this);
 

@@ -7,7 +7,7 @@ namespace Hangfire.AzureStorage.Entities
     {
         public string State { get; set; }
         public DateTime? CreatedAt { get; set; }
-        public TimeSpan? ExpireIn { get; set; }
+        public DateTime? ExpireAt { get; set; }
         public string StateFile { get; set; }
     }
 }

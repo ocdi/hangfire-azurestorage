@@ -30,6 +30,7 @@ namespace Hangfire.AzureStorage
         /// Stores the larger job information in blob storage
         /// </summary>
         CloudBlobContainer JobsContainer { get; }
+        CloudTable Counters { get; }
 
         CloudQueue Queue(string queue);
     }
@@ -50,6 +51,7 @@ namespace Hangfire.AzureStorage
         const string LISTS_TABLE = "Lists";
         const string HASHS_TABLE = "Hashs";
         const string JOBS_TABLE = "Jobs";
+        const string COUNTERS_TABLE = "Counters";
 
         const string JOB_CONTAINER = "jobs";
 
@@ -70,6 +72,7 @@ namespace Hangfire.AzureStorage
             GetTable(LISTS_TABLE).CreateIfNotExists();
             GetTable(JOBS_TABLE).CreateIfNotExists();
             GetTable(HASHS_TABLE).CreateIfNotExists();
+            GetTable(COUNTERS_TABLE).CreateIfNotExists();
 
             GetContainer(JOB_CONTAINER).CreateIfNotExists();
         }
@@ -80,6 +83,8 @@ namespace Hangfire.AzureStorage
         CloudTable IAzureJobStorageInternal.Lists => GetTable(LISTS_TABLE);
         CloudTable IAzureJobStorageInternal.Hashs => GetTable(HASHS_TABLE);
         CloudTable IAzureJobStorageInternal.Jobs => GetTable(JOBS_TABLE);
+        CloudTable IAzureJobStorageInternal.Counters => GetTable(COUNTERS_TABLE);
+
 
         CloudBlobContainer IAzureJobStorageInternal.JobsContainer => GetContainer(JOB_CONTAINER);
 

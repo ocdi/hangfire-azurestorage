@@ -105,26 +105,23 @@ namespace Hangfire.AzureStorage
             }
         }
 
-        public void DecrementCounter([NotNull] string key)
-        {
-            throw new NotImplementedException();
-        }
+        public void DecrementCounter([NotNull] string key) => StoreCounter(key, -1);
 
-        public void DecrementCounter([NotNull] string key, TimeSpan expireIn)
-        {
-            throw new NotImplementedException();
-        }
+        public void DecrementCounter([NotNull] string key, TimeSpan expireIn) => StoreCounter(key, -1, DateTime.UtcNow + expireIn);
+       
 
-        
-        public void IncrementCounter([NotNull] string key)
-        {
-            throw new NotImplementedException();
-        }
 
-        public void IncrementCounter([NotNull] string key, TimeSpan expireIn)
-        {
-            throw new NotImplementedException();
-        }
+        public void IncrementCounter([NotNull] string key) => StoreCounter(key, 1);
+
+        public void IncrementCounter([NotNull] string key, TimeSpan expireIn) => StoreCounter(key, 1, DateTime.UtcNow + expireIn);
+
+        private void StoreCounter(string key, int incr, DateTime? expireAt = null) => _actions.Enqueue(()
+                => _storage.Storage.Counters.Execute(TableOperation.Insert(new CounterEntity {
+                    PartitionKey = key,
+                    RowKey = Guid.NewGuid().ToString(),
+                    Value = incr,
+                    ExpireAt = expireAt
+                })));
 
         public void InsertToList([NotNull] string key, [NotNull] string value)
         {

@@ -108,7 +108,7 @@ namespace Hangfire.AzureStorage
 
                 _disposed = true;
 
-                _timer.Dispose();
+                _timer?.Dispose();
 
                 _reference.ReleaseLease(_lease);
             }

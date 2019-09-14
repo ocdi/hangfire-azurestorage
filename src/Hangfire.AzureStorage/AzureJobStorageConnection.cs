@@ -47,18 +47,12 @@ namespace Hangfire.AzureStorage
 
             try
             {
-                var leaseId = lockRef.AcquireLease(timeout, Guid.NewGuid().ToString());
+                var t = timeout - OneMinute;
+                  
+                var leaseId = lockRef.AcquireLease(t < TimeSpan.Zero ? timeout : OneMinute, Guid.NewGuid().ToString());
 
                 // we can only hold a lease for a maximum 60 seconds
-                _timer = new Timer(ExecuteKeepAliveQuery, null, 30000, 30000);
-
-
-
-                return new LockReleaser(() => {
-                    _timer.Dispose();
-                    lockRef.ReleaseLease(new AccessCondition { LeaseId = leaseId });
-                });
-
+                return new LeaseLock(leaseId, lockRef, t);
             }
             catch (Microsoft.Azure.Storage.StorageException ex) when(ex.RequestInformation?.HttpStatusCode == (int)HttpStatusCode.Conflict || ex.RequestInformation?.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
             {
@@ -67,25 +61,60 @@ namespace Hangfire.AzureStorage
             }
         }
 
-        private void ExecuteKeepAliveQuery(object state)
-        {
-            throw new NotImplementedException();
-        }
+        public static readonly TimeSpan OneMinute = TimeSpan.FromMinutes(1);
+        public static readonly TimeSpan HalfMinute = TimeSpan.FromSeconds(30);
 
-        class LockReleaser : IDisposable
-        {
-            private Action _releaser;
 
-            public LockReleaser(Action releaser) => _releaser = releaser;
+
+        class LeaseLock : IDisposable
+        {
+            private bool _disposed;
+            private readonly AccessCondition _lease;
+            private readonly CloudBlockBlob _reference;
+            private TimeSpan _remaining;
+            private readonly Timer _timer;
+
+            public LeaseLock(string leaseId, CloudBlockBlob reference, TimeSpan t)
+            {
+                _lease = new AccessCondition { LeaseId = leaseId };
+                _reference = reference;
+                _remaining = t;
+                if (t > TimeSpan.Zero)
+                {
+                    // we will renew every half minute as the lease expires after 60 seconds
+                    _timer = new Timer(RenewLease, null, HalfMinute.Milliseconds, HalfMinute.Milliseconds);
+                }
+            }
+
+            private void RenewLease(object state)
+            {
+                _remaining -= HalfMinute;
+
+                if (_remaining > TimeSpan.Zero)
+                {
+                    _reference.RenewLease(_lease);
+                }
+                else
+                {
+                    // this will stop the timer and 
+                    Dispose();
+                }
+
+            }
 
             public void Dispose()
             {
-                _releaser?.Invoke();
-                _releaser = null;
+                if (_disposed) return;
+
+                _disposed = true;
+
+                _timer.Dispose();
+
+                _reference.ReleaseLease(_lease);
             }
 
             // fall back in case we are forgotton to be disposed
-            ~LockReleaser()
+            ~LeaseLock()
             {
                 Dispose();
             }

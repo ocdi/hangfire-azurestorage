@@ -89,7 +89,7 @@ namespace Hangfire.AzureStorage
             => _tableClient.GetTableReference($"{_options.Prefix}{name}");
 
         private CloudBlobContainer GetContainer(string name) 
-            => _blobClient.GetContainerReference($"{_options.Prefix}{name}");
+            => _blobClient.GetContainerReference($"{_options.Prefix?.ToLowerInvariant()}{name}");
     }
 
 

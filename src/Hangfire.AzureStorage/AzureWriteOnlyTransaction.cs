@@ -6,6 +6,7 @@ using Hangfire.AzureStorage.Entities;
 using Hangfire.States;
 using Hangfire.Storage;
 using Microsoft.Azure.Cosmos.Table;
+using Newtonsoft.Json;
 
 namespace Hangfire.AzureStorage
 {
@@ -22,8 +23,50 @@ namespace Hangfire.AzureStorage
 
         public void AddJobState([NotNull] string jobId, [NotNull] IState state)
         {
-            throw new NotImplementedException();
+            AddJobStateWithIdentifier(_storage.StateItemReference(jobId, DateTime.UtcNow, state.Name),
+                state);
         }
+
+        private void AddJobStateWithIdentifier(string blobName, IState state)
+        {
+            var model = new HangfireJobStateModel
+            {
+                Name = state.Name,
+                Reason = state.Reason,
+                Data = state.SerializeData(),
+                CreatedAt = DateTime.UtcNow,
+            };
+            var json = JsonConvert.SerializeObject(model);
+
+            _actions.Enqueue(() =>
+            {
+                // this is just adding to a history table which we store in blob storage
+                // we store this in blob storage in a subdirectory of the parent job
+                var referernce = _storage.Storage.JobsContainer.GetBlockBlobReference(blobName);
+
+                // upload the data
+                referernce.UploadText(json);
+            });
+        }
+
+        public void SetJobState([NotNull] string jobId, [NotNull] IState state)
+        {
+            var identifier = _storage.StateItemReference(jobId, DateTime.UtcNow, state.Name);
+            // persist the state information
+            AddJobStateWithIdentifier(identifier, state);
+
+            // update the job state to match the new state
+            _actions.Enqueue(() =>
+            {
+                _storage.Storage.Jobs.Execute(TableOperation.InsertOrMerge(new JobEntity {
+                    PartitionKey = _storage.PartitionKeyForJob(jobId),
+                    RowKey = jobId,
+                    State = state.Name,
+                    StateFile = identifier
+                }));
+            });
+        }
+
 
         public void AddToQueue([NotNull] string queue, [NotNull] string jobId)
         {
@@ -140,11 +183,6 @@ namespace Hangfire.AzureStorage
 
             // ensure there are no left over
             if (batch.Count > 0) table.ExecuteBatch(batch);
-        }
-
-        public void SetJobState([NotNull] string jobId, [NotNull] IState state)
-        {
-            // this is just adding to a history table
         }
 
         public void SetRangeInHash([NotNull] string key, [NotNull] IEnumerable<KeyValuePair<string, string>> keyValuePairs)

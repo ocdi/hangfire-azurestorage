@@ -1,12 +1,22 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Hangfire.AzureStorage.Entities;
 using Hangfire.Storage;
 using Hangfire.Storage.Monitoring;
+using Microsoft.Azure.Cosmos.Table;
 
 namespace Hangfire.AzureStorage
 {
     public class AzureMonitoringApi : IMonitoringApi
     {
+        private IAzureJobStorageInternal _azureJobStorage;
+
+        public AzureMonitoringApi(IAzureJobStorageInternal azureJobStorage)
+        {
+            _azureJobStorage = azureJobStorage;
+        }
+
         public JobList<DeletedJobDto> DeletedJobs(int from, int count)
         {
             throw new NotImplementedException();
@@ -19,7 +29,11 @@ namespace Hangfire.AzureStorage
 
         public long EnqueuedCount(string queue)
         {
-            throw new NotImplementedException();
+            var q = _azureJobStorage.Queue(queue);
+            
+            q.FetchAttributes();
+
+            return q.ApproximateMessageCount ?? -0;
         }
 
         public JobList<EnqueuedJobDto> EnqueuedJobs(string queue, int from, int perPage)
@@ -54,18 +68,21 @@ namespace Hangfire.AzureStorage
 
         public StatisticsDto GetStatistics()
         {
-            throw new NotImplementedException();
+            return new StatisticsDto { };
         }
 
         public IDictionary<DateTime, long> HourlyFailedJobs()
         {
-            throw new NotImplementedException();
+            return new Dictionary<DateTime, long>();
         }
 
         public IDictionary<DateTime, long> HourlySucceededJobs()
         {
-            throw new NotImplementedException();
+            return new Dictionary<DateTime, long>();
         }
+
+    
+
 
         public JobDetailsDto JobDetails(string jobId)
         {

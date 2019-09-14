@@ -77,6 +77,15 @@ namespace Hangfire.AzureStorage
             GetContainer(JOB_CONTAINER).CreateIfNotExists();
         }
 
+        public override IStorageConnection GetConnection() => new AzureJobStorageConnection(this);
+
+        public override IMonitoringApi GetMonitoringApi() => new AzureMonitoringApi(this);
+
+        //public override IEnumerable<IServerComponent> GetComponents()
+        //{
+            
+        //}
+
 
         CloudTable IAzureJobStorageInternal.Servers => GetTable(SERVER_TABLE);
         CloudTable IAzureJobStorageInternal.Sets => GetTable(SETS_TABLE);
@@ -96,10 +105,6 @@ namespace Hangfire.AzureStorage
             reference.CreateIfNotExists();
             return reference;
         }
-
-        public override IStorageConnection GetConnection() => new AzureJobStorageConnection(this);
-
-        public override IMonitoringApi GetMonitoringApi() => new AzureMonitoringApi();
 
 
         private CloudTable GetTable(string name)

@@ -153,12 +153,12 @@ namespace Hangfire.AzureStorage
 
         public void RemoveFromList([NotNull] string key, [NotNull] string value)
         {
-            _actions.Enqueue(() => _storage.Storage.Lists.Execute(TableOperation.Delete(new SetEntity { PartitionKey = key, RowKey = value })));
+            _actions.Enqueue(() => _storage.Storage.Lists.Execute(TableOperation.Delete(new SetEntity { PartitionKey = key, RowKey = value, ETag = "*" })));
         }
 
         public void RemoveFromSet([NotNull] string key, [NotNull] string value)
         {
-            _actions.Enqueue(() => _storage.Storage.Sets.Execute(TableOperation.Delete(new SetEntity { PartitionKey = key, RowKey = value })));
+            _actions.Enqueue(() => _storage.Storage.Sets.Execute(TableOperation.Delete(new SetEntity { PartitionKey = key, RowKey = value, ETag = "*" })));
         }
 
         public void RemoveHash([NotNull] string key)
@@ -168,7 +168,7 @@ namespace Hangfire.AzureStorage
                 // first enumerate all the items
                 var items = _storage.GetAllEntriesFromHash(key);
                 PerformBatchedOperation(_storage.Storage.Hashs,
-                    items.Keys.Select(r => TableOperation.Delete(new HashEntity { PartitionKey = key, RowKey = r })));
+                    items.Keys.Select(r => TableOperation.Delete(new HashEntity { PartitionKey = key, RowKey = r, ETag = "*" })));
             });
         }
 

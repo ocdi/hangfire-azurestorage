@@ -1,15 +1,20 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26124.0
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29009.5
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{220981A4-9B17-417E-96DA-F9694CF78C03}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.AzureStorage", "src\Hangfire.AzureStorage\Hangfire.AzureStorage.csproj", "{B3E06D79-4B31-409E-A535-7BC865B895DB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.AzureStorage", "src\Hangfire.AzureStorage\Hangfire.AzureStorage.csproj", "{B3E06D79-4B31-409E-A535-7BC865B895DB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{9686C525-0456-481F-83CA-C7DB1D5854BF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.AzureStorage.Tests", "tests\Hangfire.AzureStorage.Tests\Hangfire.AzureStorage.Tests.csproj", "{4587D848-07DB-4166-9C03-711A7C5864F6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.AzureStorage.Tests", "tests\Hangfire.AzureStorage.Tests\Hangfire.AzureStorage.Tests.csproj", "{4587D848-07DB-4166-9C03-711A7C5864F6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{B8E04D45-1933-4CBA-883A-C3E9F6E7B5D1}"
+	ProjectSection(SolutionItems) = preProject
+		docs\schema.md = docs\schema.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,9 +24,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{B3E06D79-4B31-409E-A535-7BC865B895DB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -49,8 +51,14 @@ Global
 		{4587D848-07DB-4166-9C03-711A7C5864F6}.Release|x86.ActiveCfg = Release|Any CPU
 		{4587D848-07DB-4166-9C03-711A7C5864F6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{B3E06D79-4B31-409E-A535-7BC865B895DB} = {220981A4-9B17-417E-96DA-F9694CF78C03}
 		{4587D848-07DB-4166-9C03-711A7C5864F6} = {9686C525-0456-481F-83CA-C7DB1D5854BF}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0027871E-7389-4AC5-BF63-4E99EFFF5CB8}
 	EndGlobalSection
 EndGlobal

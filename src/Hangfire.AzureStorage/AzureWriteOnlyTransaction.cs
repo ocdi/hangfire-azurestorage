@@ -12,7 +12,7 @@ namespace Hangfire.AzureStorage
     internal class AzureWriteOnlyTransaction : IWriteOnlyTransaction
     {
         private readonly AzureJobStorageConnection _storage;
-        private readonly List<Action> _actions = new List<Action>();
+        private readonly Queue<Action> _actions = new Queue<Action>();
 
         // we will batch this in commit
         private readonly Dictionary<string, List<(string key, double score)>> _sets = new Dictionary<string, List<(string, double)>>();
@@ -71,11 +71,7 @@ namespace Hangfire.AzureStorage
             throw new NotImplementedException();
         }
 
-        public void ExpireJob([NotNull] string jobId, TimeSpan expireIn)
-        {
-            throw new NotImplementedException();
-        }
-
+        
         public void IncrementCounter([NotNull] string key)
         {
             throw new NotImplementedException();
@@ -91,25 +87,33 @@ namespace Hangfire.AzureStorage
             throw new NotImplementedException();
         }
 
+        public void ExpireJob([NotNull] string jobId, TimeSpan expireIn)
+        {
+            // this sets an expiry date for a job in the timespan specified
+            throw new NotImplementedException();
+        }
+
+
         public void PersistJob([NotNull] string jobId)
         {
+            // this removes expiry for a job
             throw new NotImplementedException();
         }
 
         public void RemoveFromList([NotNull] string key, [NotNull] string value)
         {
-            _actions.Add(() => _storage.Storage.Lists.Execute(TableOperation.Delete(new SetEntity { PartitionKey = key, RowKey = value })));
+            _actions.Enqueue(() => _storage.Storage.Lists.Execute(TableOperation.Delete(new SetEntity { PartitionKey = key, RowKey = value })));
         }
 
         public void RemoveFromSet([NotNull] string key, [NotNull] string value)
         {
-            _actions.Add(() => _storage.Storage.Sets.Execute(TableOperation.Delete(new SetEntity { PartitionKey = key, RowKey = value })));
+            _actions.Enqueue(() => _storage.Storage.Sets.Execute(TableOperation.Delete(new SetEntity { PartitionKey = key, RowKey = value })));
         }
 
         public void RemoveHash([NotNull] string key)
         {
             // remove all items in a hash where the key is the partition name
-            _actions.Add(() => {
+            _actions.Enqueue(() => {
                 // first enumerate all the items
                 var items = _storage.GetAllEntriesFromHash(key);
                 PerformBatchedOperation(_storage.Storage.Hashs,
@@ -140,12 +144,12 @@ namespace Hangfire.AzureStorage
 
         public void SetJobState([NotNull] string jobId, [NotNull] IState state)
         {
-            throw new NotImplementedException();
+            // this is just adding to a history table
         }
 
         public void SetRangeInHash([NotNull] string key, [NotNull] IEnumerable<KeyValuePair<string, string>> keyValuePairs)
         {
-            _actions.Add(() => PerformBatchedOperation(_storage.Storage.Hashs, keyValuePairs.Select(
+            _actions.Enqueue(() => PerformBatchedOperation(_storage.Storage.Hashs, keyValuePairs.Select(
                 k=> TableOperation.InsertOrMerge(new HashEntity { PartitionKey = key, RowKey = k.Key, Value = k.Value })
             )));
         }

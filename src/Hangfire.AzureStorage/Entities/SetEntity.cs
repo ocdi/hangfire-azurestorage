@@ -10,10 +10,4 @@ namespace Hangfire.AzureStorage.Entities
     {
         public double? Score { get; set; }
     }
-
-
-    public class HashEntity : TableEntity
-    {
-        public string Value { get; set; }
-    }
 }

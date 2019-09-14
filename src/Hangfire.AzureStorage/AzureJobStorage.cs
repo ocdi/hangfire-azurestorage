@@ -19,6 +19,16 @@ namespace Hangfire.AzureStorage
         CloudTable Lists { get; }
         CloudTable Hashs { get; }
         AzureStorageOptions Options { get; }
+
+
+        /// <summary>
+        /// Stores the job metadata
+        /// </summary>
+        CloudTable Jobs { get; }
+        /// <summary>
+        /// Stores the larger job information in blob storage
+        /// </summary>
+        CloudBlobContainer JobsContainer { get; }
     }
 
     public class AzureJobStorage : JobStorage, IAzureJobStorageInternal
@@ -36,6 +46,9 @@ namespace Hangfire.AzureStorage
         const string SETS_TABLE = "Sets";
         const string LISTS_TABLE = "Lists";
         const string HASHS_TABLE = "Hashs";
+        const string JOBS_TABLE = "Jobs";
+
+        const string JOB_CONTAINER = "jobs";
 
         public AzureJobStorage(AzureStorageOptions options)
         {
@@ -52,7 +65,10 @@ namespace Hangfire.AzureStorage
             GetTable(SERVER_TABLE).CreateIfNotExists();
             GetTable(SETS_TABLE).CreateIfNotExists();
             GetTable(LISTS_TABLE).CreateIfNotExists();
+            GetTable(JOBS_TABLE).CreateIfNotExists();
             GetTable(HASHS_TABLE).CreateIfNotExists();
+
+            GetContainer(JOB_CONTAINER).CreateIfNotExists();
         }
 
 
@@ -60,24 +76,20 @@ namespace Hangfire.AzureStorage
         CloudTable IAzureJobStorageInternal.Sets => GetTable(SETS_TABLE);
         CloudTable IAzureJobStorageInternal.Lists => GetTable(LISTS_TABLE);
         CloudTable IAzureJobStorageInternal.Hashs => GetTable(HASHS_TABLE);
+        CloudTable IAzureJobStorageInternal.Jobs => GetTable(JOBS_TABLE);
 
+        CloudBlobContainer IAzureJobStorageInternal.JobsContainer => GetContainer(JOB_CONTAINER);
 
-        public override IStorageConnection GetConnection()
-        {
-            return new AzureJobStorageConnection(this);
-        }
+        public override IStorageConnection GetConnection() => new AzureJobStorageConnection(this);
 
-        public override IMonitoringApi GetMonitoringApi()
-        {
-            return new AzureMonitoringApi();
-        }
+        public override IMonitoringApi GetMonitoringApi() => new AzureMonitoringApi();
 
 
         private CloudTable GetTable(string name)
-        {
-            var table = _tableClient.GetTableReference($"{_options.Prefix}{name}");
-            return table;
-        }
+            => _tableClient.GetTableReference($"{_options.Prefix}{name}");
+
+        private CloudBlobContainer GetContainer(string name) 
+            => _blobClient.GetContainerReference($"{_options.Prefix}{name}");
     }
 
 

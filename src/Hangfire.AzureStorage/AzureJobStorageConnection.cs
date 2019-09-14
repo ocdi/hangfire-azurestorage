@@ -53,11 +53,39 @@ namespace Hangfire.AzureStorage
             _storage.Servers.Execute(TableOperation.InsertOrMerge(data));
         }
 
+        class HangfireJobModel
+        {
+            public string InvocationData { get; set; }
+            public string Arguments { get; set; }
+            public IDictionary<string,string> Parameters { get; set; }
+            public DateTime CreatedAt { get; internal set; }
+        }
 
+        string JobReference(string jobId) => $"/{jobId}/job.json";
 
         public string CreateExpiredJob(Job job, IDictionary<string, string> parameters, DateTime createdAt, TimeSpan expireIn)
         {
-            throw new NotImplementedException();
+            var invocationData = InvocationData.SerializeJob(job);
+            var payload = invocationData.SerializePayload(excludeArguments: true);
+
+            var jobId = Guid.NewGuid().ToString();
+
+            var model = new HangfireJobModel
+            {
+                InvocationData = payload,
+                Arguments = invocationData.Arguments,
+                Parameters = parameters,
+                CreatedAt = createdAt
+            };
+
+            var blob = JsonConvert.SerializeObject(model);
+
+            var reference = _storage.JobsContainer.GetBlockBlobReference(JobReference(jobId));
+            reference.UploadText(blob);
+
+            _storage.Jobs.Execute(TableOperation.InsertOrMerge(new ))
+
+            return jobId;
         }
 
         public IWriteOnlyTransaction CreateWriteTransaction()

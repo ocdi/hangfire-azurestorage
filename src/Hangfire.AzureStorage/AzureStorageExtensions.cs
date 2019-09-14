@@ -13,7 +13,7 @@ namespace Hangfire.AzureStorage
         public string Prefix { get; set; }
 
         /// <summary>
-        /// How often to sleep between polling when there are no jobs
+        /// How often to sleep between polling when there are no jobs, in seconds
         /// </summary>
         public int QueuePollInterval { get; set; } = 30;
         public TimeSpan? VisibilityTimeout { get; set; } = TimeSpan.FromMinutes(60);

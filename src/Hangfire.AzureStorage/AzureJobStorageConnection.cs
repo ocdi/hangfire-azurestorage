@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using Hangfire.Annotations;
 using Hangfire.AzureStorage.Entities;
@@ -20,7 +21,7 @@ namespace Hangfire.AzureStorage
     public class AzureJobStorageConnection : IStorageConnection
     {
         private bool _disposedValue = false; // To detect redundant calls
-
+        private Timer _timer;
 
         public AzureJobStorageConnection(IAzureJobStorageInternal storage) => Storage = storage;
         public IAzureJobStorageInternal Storage { get; }
@@ -29,14 +30,46 @@ namespace Hangfire.AzureStorage
         public IDisposable AcquireDistributedLock(string resource, TimeSpan timeout)
         {
             // todo handle errors
-
-            var blobName = $"locks/{resource}.lock";
+            
+            var blobName = $"locks/{resource.Replace(":", "-")}.lock";
 
             // we'll use leases on the job storage to achieve this
-            var lockRef = Storage.JobsContainer.GetBlobReference(blobName);
-            var leaseId = lockRef.AcquireLease(timeout, blobName);
+            var lockRef = Storage.JobsContainer.GetBlockBlobReference(blobName);
+            try
+            {
+                // ensure the lock file exists
+                if (!lockRef.Exists()) lockRef.UploadText(string.Empty);
+            }
+            catch (Microsoft.Azure.Storage.StorageException ex) when (ex.RequestInformation?.HttpStatusCode == (int)HttpStatusCode.Conflict || ex.RequestInformation?.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
+            {
+                // ignore exception caused by conflict as it means the file already exists
+            }
 
-            return new LockReleaser(() => lockRef.ReleaseLease(new AccessCondition { LeaseId = leaseId }));
+            try
+            {
+                var leaseId = lockRef.AcquireLease(timeout, Guid.NewGuid().ToString());
+
+                // we can only hold a lease for a maximum 60 seconds
+                _timer = new Timer(ExecuteKeepAliveQuery, null, 30000, 30000);
+
+
+
+                return new LockReleaser(() => {
+                    _timer.Dispose();
+                    lockRef.ReleaseLease(new AccessCondition { LeaseId = leaseId });
+                });
+
+            }
+            catch (Microsoft.Azure.Storage.StorageException ex) when(ex.RequestInformation?.HttpStatusCode == (int)HttpStatusCode.Conflict || ex.RequestInformation?.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
+            {
+                // we failed to acquire a lock
+                throw new DistributedLockTimeoutException(resource);
+            }
+        }
+
+        private void ExecuteKeepAliveQuery(object state)
+        {
+            throw new NotImplementedException();
         }
 
         class LockReleaser : IDisposable
@@ -150,7 +183,7 @@ namespace Hangfire.AzureStorage
                 {
                     if (currentQueueIndex == references.Length - 1)
                     {
-                        cancellationToken.WaitHandle.WaitOne(Storage.Options.QueuePollInterval);
+                        cancellationToken.WaitHandle.WaitOne(Storage.Options.QueuePollInterval * 1000);
                         cancellationToken.ThrowIfCancellationRequested();
                     }
 
@@ -160,8 +193,7 @@ namespace Hangfire.AzureStorage
             } while (message == null);
 
 
-            // todo return this (!)
-            return null ;
+            return new AzureQueueFetchedJob(references[currentQueueIndex], message);
         }
 
         public Dictionary<string, string> GetAllEntriesFromHash([NotNull] string key)
@@ -369,11 +401,29 @@ namespace Hangfire.AzureStorage
 
     public class AzureQueueFetchedJob : IFetchedJob
     {
-        public string JobId { get; }
+        private readonly CloudQueue _queue;
+        private readonly CloudQueueMessage _message;
 
-        public void Dispose() => throw new NotImplementedException();
-        public void RemoveFromQueue() => throw new NotImplementedException();
-        public void Requeue() => throw new NotImplementedException();
+        public AzureQueueFetchedJob(CloudQueue queue, CloudQueueMessage message)
+        {
+            _queue = queue;
+            _message = message;
+        }
+        public string JobId => _message.AsString;
+
+        void IDisposable.Dispose()
+        {
+        }
+
+        public void RemoveFromQueue()
+        {
+            _queue.DeleteMessage(_message);
+        }
+
+        public void Requeue()
+        {
+            _queue.AddMessage(_message);
+        }
     }
 }
 

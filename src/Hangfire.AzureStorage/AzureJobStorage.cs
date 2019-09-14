@@ -16,6 +16,8 @@ namespace Hangfire.AzureStorage
     {
         CloudTable Servers { get; }
         CloudTable Sets { get; }
+        CloudTable Lists { get; }
+        CloudTable Hashs { get; }
         AzureStorageOptions Options { get; }
     }
 
@@ -32,6 +34,8 @@ namespace Hangfire.AzureStorage
 
         const string SERVER_TABLE = "Servers";
         const string SETS_TABLE = "Sets";
+        const string LISTS_TABLE = "Lists";
+        const string HASHS_TABLE = "Hashs";
 
         public AzureJobStorage(AzureStorageOptions options)
         {
@@ -47,11 +51,15 @@ namespace Hangfire.AzureStorage
             // ensure the required tables / containers exists
             GetTable(SERVER_TABLE).CreateIfNotExists();
             GetTable(SETS_TABLE).CreateIfNotExists();
+            GetTable(LISTS_TABLE).CreateIfNotExists();
+            GetTable(HASHS_TABLE).CreateIfNotExists();
         }
 
 
         CloudTable IAzureJobStorageInternal.Servers => GetTable(SERVER_TABLE);
         CloudTable IAzureJobStorageInternal.Sets => GetTable(SETS_TABLE);
+        CloudTable IAzureJobStorageInternal.Lists => GetTable(LISTS_TABLE);
+        CloudTable IAzureJobStorageInternal.Hashs => GetTable(HASHS_TABLE);
 
 
         public override IStorageConnection GetConnection()

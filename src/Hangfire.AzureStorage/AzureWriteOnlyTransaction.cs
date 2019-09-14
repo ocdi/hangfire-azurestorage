@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Hangfire.Annotations;
+using Hangfire.AzureStorage.Entities;
 using Hangfire.States;
 using Hangfire.Storage;
 using Microsoft.Azure.Cosmos.Table;
@@ -9,14 +11,14 @@ namespace Hangfire.AzureStorage
 {
     internal class AzureWriteOnlyTransaction : IWriteOnlyTransaction
     {
-        private AzureJobStorageConnection _storage;
+        private readonly AzureJobStorageConnection _storage;
+        private readonly List<Action> _actions = new List<Action>();
 
-        private SortedDictionary<string, (string, double)> _sets = new SortedDictionary<string, (string, double)>();
+        // we will batch this in commit
+        private readonly Dictionary<string, List<(string key, double score)>> _sets = new Dictionary<string, List<(string, double)>>();
 
-        public AzureWriteOnlyTransaction(AzureJobStorageConnection azureJobStorageConnection)
-        {
-            _storage = azureJobStorageConnection;
-        }
+        public AzureWriteOnlyTransaction(AzureJobStorageConnection azureJobStorageConnection) 
+            => _storage = azureJobStorageConnection;
 
         public void AddJobState([NotNull] string jobId, [NotNull] IState state)
         {
@@ -32,15 +34,30 @@ namespace Hangfire.AzureStorage
 
         public void AddToSet([NotNull] string key, [NotNull] string value, double score)
         {
-            _sets[key] = (value, score);
+            
+            if (!_sets.TryGetValue(key, out var list))
+            {
+                list = new List<(string key, double score)>();
+                _sets.Add(key, list);
+            }
+            list.Add((value, score));
         }
 
         public void Commit()
         {
-            // _storage.Storage.Sets.ExecuteBatch(new TableBatchOperation { })
-            
-            foreach (var set in _sets) {
+            foreach (var a in _actions) a();
 
+            // _storage.Storage.Sets.ExecuteBatch(new TableBatchOperation { })
+            foreach (var set in _sets)
+            {
+                PerformBatchedOperation(_storage.Storage.Sets, set.Value.Select(a
+                        => TableOperation.InsertOrMerge(new SetEntity
+                        {
+                            PartitionKey = set.Key,
+                            RowKey = a.key,
+                            Score = a.score
+                        })));
+                
             }
         }
 
@@ -81,17 +98,44 @@ namespace Hangfire.AzureStorage
 
         public void RemoveFromList([NotNull] string key, [NotNull] string value)
         {
-            throw new NotImplementedException();
+            _actions.Add(() => _storage.Storage.Lists.Execute(TableOperation.Delete(new SetEntity { PartitionKey = key, RowKey = value })));
         }
 
         public void RemoveFromSet([NotNull] string key, [NotNull] string value)
         {
-            throw new NotImplementedException();
+            _actions.Add(() => _storage.Storage.Sets.Execute(TableOperation.Delete(new SetEntity { PartitionKey = key, RowKey = value })));
         }
 
         public void RemoveHash([NotNull] string key)
         {
-            throw new NotImplementedException();
+            // remove all items in a hash where the key is the partition name
+            _actions.Add(() => {
+                // first enumerate all the items
+                var items = _storage.GetAllEntriesFromHash(key);
+                PerformBatchedOperation(_storage.Storage.Hashs,
+                    items.Keys.Select(r => TableOperation.Delete(new HashEntity { PartitionKey = key, RowKey = r })));
+            });
+        }
+
+        void PerformBatchedOperation(CloudTable table, IEnumerable<TableOperation> operations) {
+            var i = 0;
+            var batch = new TableBatchOperation();
+
+            foreach (var op in operations) {
+                i++;
+                Console.WriteLine($"op {i}");
+                batch.Add(op);
+
+                // limit the batch size
+                if (i == 100) {   
+                    table.ExecuteBatch(batch);
+                    batch = new TableBatchOperation();
+                    i = 0;
+                }
+            }
+
+            // ensure there are no left over
+            if (batch.Count > 0) table.ExecuteBatch(batch);
         }
 
         public void SetJobState([NotNull] string jobId, [NotNull] IState state)
@@ -101,7 +145,9 @@ namespace Hangfire.AzureStorage
 
         public void SetRangeInHash([NotNull] string key, [NotNull] IEnumerable<KeyValuePair<string, string>> keyValuePairs)
         {
-            throw new NotImplementedException();
+            _actions.Add(() => PerformBatchedOperation(_storage.Storage.Hashs, keyValuePairs.Select(
+                k=> TableOperation.InsertOrMerge(new HashEntity { PartitionKey = key, RowKey = k.Key, Value = k.Value })
+            )));
         }
 
         public void TrimList([NotNull] string key, int keepStartingFrom, int keepEndingAt)

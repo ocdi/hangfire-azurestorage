@@ -28,7 +28,7 @@ namespace Hangfire.AzureStorage
         }
 
         public IAzureJobStorageInternal Storage => _storage;
-      
+
 
         /// <summary>
         /// Creates or updates the existance of a server in table storage
@@ -49,11 +49,11 @@ namespace Hangfire.AzureStorage
                 StartedAt = DateTime.UtcNow,
                 LastHeartbeat = DateTime.UtcNow
             };
-            
+
             _storage.Servers.Execute(TableOperation.InsertOrMerge(data));
         }
 
-      
+
 
         public string CreateExpiredJob(Job job, IDictionary<string, string> parameters, DateTime createdAt, TimeSpan expireIn)
         {
@@ -74,27 +74,40 @@ namespace Hangfire.AzureStorage
 
         public Dictionary<string, string> GetAllEntriesFromHash([NotNull] string key)
         {
-            throw new NotImplementedException();
+            // key field value
+            var query = new TableQuery<HashEntity>().Where(
+                TableQuery.GenerateFilterCondition(nameof(ITableEntity.PartitionKey), QueryComparisons.Equal, key
+            ));
+
+            var result = new Dictionary<string,string>();
+
+            foreach (var (RowKey, Value) in Query(_storage.Hashs, query, a => (a.RowKey, a.Value)))
+                result.Add(RowKey, Value);
+
+            return result;
         }
 
         public HashSet<string> GetAllItemsFromSet([NotNull] string key)
         {
-            var query = new TableQuery<SetEntity>().Where(TableQuery.GenerateFilterCondition(nameof(SetEntity.PartitionKey), QueryComparisons.Equal, key));
+            var query = new TableQuery<SetEntity>().Where(TableQuery.GenerateFilterCondition(nameof(ITableEntity.PartitionKey), QueryComparisons.Equal, key));
+            return new HashSet<string>(Query(_storage.Sets, query, a => a.RowKey));
+
+        }
+
+        private IEnumerable<T> Query<TEntity, T>(CloudTable table, TableQuery<TEntity> query, Func<TEntity, T> transform)
+            where TEntity : ITableEntity, new()
+        {
             TableContinuationToken token = null;
 
-            var results = new HashSet<string>();
             do
             {
-                var segment = _storage.Sets.ExecuteQuerySegmented(query, token);
+                var segment = table.ExecuteQuerySegmented(query, token);
                 foreach (var result in segment.Results)
-                    results.Add(result.RowKey);
+                    yield return transform(result);
 
                 token = segment.ContinuationToken;
             } while (token != null);
-
-            return results;
         }
-
         public string GetFirstByLowestScoreFromSet(string key, double fromScore, double toScore)
         {
             throw new NotImplementedException();
@@ -141,7 +154,7 @@ namespace Hangfire.AzureStorage
         }
 
         #region IDisposable Support
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposedValue)

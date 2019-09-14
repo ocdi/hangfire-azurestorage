@@ -31,6 +31,7 @@ namespace Hangfire.AzureStorage
         /// </summary>
         CloudBlobContainer JobsContainer { get; }
         CloudTable Counters { get; }
+        CloudQueueClient QueueClient { get; }
 
         CloudQueue Queue(string queue);
     }
@@ -79,12 +80,7 @@ namespace Hangfire.AzureStorage
 
         public override IStorageConnection GetConnection() => new AzureJobStorageConnection(this);
 
-        public override IMonitoringApi GetMonitoringApi() => new AzureMonitoringApi(this);
-
-        //public override IEnumerable<IServerComponent> GetComponents()
-        //{
-            
-        //}
+        public override IMonitoringApi GetMonitoringApi() => new AzureMonitoringApi(new AzureJobStorageConnection(this));
 
 
         CloudTable IAzureJobStorageInternal.Servers => GetTable(SERVER_TABLE);
@@ -105,6 +101,8 @@ namespace Hangfire.AzureStorage
             reference.CreateIfNotExists();
             return reference;
         }
+
+        CloudQueueClient IAzureJobStorageInternal.QueueClient => _queueClient;
 
 
         private CloudTable GetTable(string name)

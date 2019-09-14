@@ -344,25 +344,33 @@ namespace Hangfire.AzureStorage
 
         public StateData GetStateData([NotNull] string jobId)
         {
-            // this is the most recent state entry
-            var result = LoadTableJob(jobId);
-            var entity = result.Result as JobEntity;
+            var (entity, model) = GetStateDataRaw(jobId);
 
             var data = new StateData
             {
-                Name = entity.State
+                Name = entity?.State,
+                Reason = model?.Reason,
+                Data = model?.Data
             };
 
-            if (entity.StateFile != null)
+            return data;
+        }
+
+        internal (JobEntity entity, HangfireJobStateModel model) GetStateDataRaw(string jobId)
+        {
+            // this is the most recent state entry
+            var result = LoadTableJob(jobId);
+
+            (JobEntity entity, HangfireJobStateModel model) jobstate = (result.Result as JobEntity, null);
+
+            if (jobstate.entity.StateFile != null)
             {
-                var blobRef = Storage.JobsContainer.GetBlockBlobReference(entity.StateFile);
+                var blobRef = Storage.JobsContainer.GetBlockBlobReference(jobstate.entity.StateFile);
                 var json = blobRef.DownloadText();
-                var model = JsonConvert.DeserializeObject<HangfireJobStateModel>(json);
-                data.Reason = model.Reason;
-                data.Data = model.Data;
+                jobstate.model = JsonConvert.DeserializeObject<HangfireJobStateModel>(json);
             }
 
-            return data;
+            return jobstate;
         }
 
         private TableResult LoadTableJob(string jobId) => Storage.Jobs.Execute(TableOperation.Retrieve<JobEntity>(PartitionKeyForJob(jobId), jobId));

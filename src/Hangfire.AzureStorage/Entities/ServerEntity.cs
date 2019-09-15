@@ -5,14 +5,17 @@ namespace Hangfire.AzureStorage.Entities
 {
     public class ServerEntity : TableEntity
     {
-        public int WorkerCount { get;  set; }
+
+        public const string GLOBAL_PARTITION_KEY = "All";
+
+        public int? WorkerCount { get;  set; }
 
         /// <summary>
         /// This will be stored as a serialized JSON string, but is really an Enumerable of string
         /// </summary>
         /// <value></value>
         public string Queues { get;  set; }
-        public DateTime StartedAt { get;  set; }
+        public DateTime? StartedAt { get;  set; }
         public DateTime LastHeartbeat { get;  set; }
     }
 }

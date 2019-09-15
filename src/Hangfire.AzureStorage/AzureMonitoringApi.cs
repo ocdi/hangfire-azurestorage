@@ -172,10 +172,10 @@ namespace Hangfire.AzureStorage
             return _storage.Storage.Servers.CreateQuery<ServerEntity>()
                 .Select(a => new ServerDto
                 {
-                    StartedAt = a.StartedAt,
+                    StartedAt = a.StartedAt ?? DateTime.MinValue,
                     Heartbeat = a.LastHeartbeat,
                     Name = a.RowKey,
-                    WorkersCount = a.WorkerCount,
+                    WorkersCount = a.WorkerCount ?? 0,
                     Queues = JsonConvert.DeserializeObject<string[]>(a.Queues)
                 }).ToList();
         }

@@ -132,7 +132,7 @@ namespace Hangfire.AzureStorage
 
             var data = new ServerEntity
             {
-                PartitionKey = "All",
+                PartitionKey = ServerEntity.GLOBAL_PARTITION_KEY,
                 RowKey = serverId,
                 WorkerCount = context.WorkerCount,
                 Queues = JsonConvert.SerializeObject(context.Queues),
@@ -377,7 +377,13 @@ namespace Hangfire.AzureStorage
 
         public void Heartbeat(string serverId)
         {
-            
+            Storage.Servers.Execute(TableOperation.Merge(new ServerEntity
+            {
+                PartitionKey = ServerEntity.GLOBAL_PARTITION_KEY,
+                RowKey = serverId,
+                LastHeartbeat = DateTime.UtcNow,
+                ETag = "*"
+            }));
         }
 
         public void RemoveServer(string serverId)

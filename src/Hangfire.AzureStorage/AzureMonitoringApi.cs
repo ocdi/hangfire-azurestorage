@@ -7,18 +7,19 @@ using Hangfire.States;
 using Hangfire.Storage;
 using Hangfire.Storage.Monitoring;
 using Microsoft.Azure.Cosmos.Table;
+using Microsoft.Extensions.Caching.Distributed;
 using Newtonsoft.Json;
 
 namespace Hangfire.AzureStorage
 {
     public class AzureMonitoringApi : IMonitoringApi
     {
-        
+
         private readonly AzureJobStorageConnection _storage;
 
         public AzureMonitoringApi(AzureJobStorageConnection storage)
         {
-            
+
             _storage = storage;
         }
 
@@ -27,37 +28,30 @@ namespace Hangfire.AzureStorage
             throw new NotImplementedException();
         }
 
-        public long DeletedListCount()
-        {
-            throw new NotImplementedException();
-        }
+        public long DeletedListCount() => JobsByStatus(DeletedState.StateName).Count();
 
         public long EnqueuedCount(string queue)
         {
             var q = _storage.Storage.Queue(queue);
-            
+
             q.FetchAttributes();
 
             return q.ApproximateMessageCount ?? -0;
         }
 
-        private IEnumerable<string> JobsByStatus(string status, int from, int count) 
-            => _storage.Storage.Jobs.CreateQuery<JobEntity>().Where(a => a.State == status).Skip(from).Take(count).Select(a => a.RowKey);
+        private IEnumerable<string> JobsByStatus(string status, int from, int count)
+            => JobsByStatus(status).Skip(from).Take(count).Select(a => a.RowKey);
+
+        private IEnumerable<JobEntity> JobsByStatus(string status) => _storage.Storage.Jobs.CreateQuery<JobEntity>().Where(a => a.State == status).AsEnumerable();
 
         public JobList<EnqueuedJobDto> EnqueuedJobs(string queue, int from, int perPage)
         {
             throw new NotImplementedException();
         }
 
-        public IDictionary<DateTime, long> FailedByDatesCount()
-        {
-            throw new NotImplementedException();
-        }
+      
 
-        public long FailedCount()
-        {
-            throw new NotImplementedException();
-        }
+        
 
         public JobList<FailedJobDto> FailedJobs(int from, int count)
         {
@@ -68,7 +62,8 @@ namespace Hangfire.AzureStorage
                 // todo this could be optimised, perhaps for getting the state data
                 // do we index this data into its own partitioned table?
                 var (state, model) = _storage.GetStateDataRaw(a);
-                return new FailedJobDto {
+                return new FailedJobDto
+                {
                     Job = _storage.GetJobData(a).Job,
                     FailedAt = state.CreatedAt,
                     ExceptionDetails = model.Data.TryGetValue(nameof(FailedJobDto.ExceptionDetails)),
@@ -80,6 +75,7 @@ namespace Hangfire.AzureStorage
 
         public long FetchedCount(string queue)
         {
+
             return 0;
         }
 
@@ -103,18 +99,18 @@ namespace Hangfire.AzureStorage
             return new Dictionary<DateTime, long>();
         }
 
-    
 
+        public IDictionary<DateTime, long> FailedByDatesCount()
+        {
+            return new Dictionary<DateTime, long>();
+        }
 
         public JobDetailsDto JobDetails(string jobId)
         {
             throw new NotImplementedException();
         }
 
-        public long ProcessingCount()
-        {
-            throw new NotImplementedException();
-        }
+        public long ProcessingCount() => JobsByStatus(ProcessingState.StateName).Count();
 
         public JobList<ProcessingJobDto> ProcessingJobs(int from, int count)
         {
@@ -134,17 +130,18 @@ namespace Hangfire.AzureStorage
                 {
                     Name = name,
                     Fetched = 0,
-                    FirstJobs = new JobList<EnqueuedJobDto>(Enumerable.Empty<KeyValuePair<string,EnqueuedJobDto>>()),
+                    FirstJobs = new JobList<EnqueuedJobDto>(Enumerable.Empty<KeyValuePair<string, EnqueuedJobDto>>()),
                     Length = a.ApproximateMessageCount ?? 0
                 };
             });
             return queues.ToList();
         }
 
-        public long ScheduledCount()
-        {
-            throw new NotImplementedException();
-        }
+        public long FailedCount() => JobsByStatus(FailedState.StateName).Count();
+
+        public long ScheduledCount() => JobsByStatus(ScheduledState.StateName).Count();
+
+        public long SucceededListCount() => JobsByStatus(SucceededState.StateName).Count();
 
         public JobList<ScheduledJobDto> ScheduledJobs(int from, int count)
         {
@@ -153,9 +150,10 @@ namespace Hangfire.AzureStorage
 
             return new JobList<ScheduledJobDto>(jobs.ToDictionary(a => a, a =>
             {
-                    // todo this could be optimised, perhaps for getting the state data
-                    // do we index this data into its own partitioned table?
-                    var (state, model) = _storage.GetStateDataRaw(a);
+                // todo this could be optimised, perhaps for getting the state data
+                // do we index this data into its own partitioned table?
+                var (state, model) = _storage.GetStateDataRaw(a);
+
                 return new ScheduledJobDto
                 {
                     Job = _storage.GetJobData(a).Job,
@@ -187,18 +185,35 @@ namespace Hangfire.AzureStorage
 
         public JobList<SucceededJobDto> SucceededJobs(int from, int count)
         {
-            throw new NotImplementedException();
+            return new JobList<SucceededJobDto>(Enumerable.Empty<KeyValuePair<string, SucceededJobDto>>());
         }
 
-        public long SucceededListCount()
-        {
-            throw new NotImplementedException();
-        }
     }
 
 
+    public static class CacheExtensions
+    {
+        public static void SetObject<T>(this IDistributedCache cache, string key, T obj) => cache.SetString(key, JsonConvert.SerializeObject(obj));
+        public static T GetObject<T>(this IDistributedCache cache, string key)
+        {
+            var str = cache.GetString(key);
+            if (str != null)
+            {
+                try
+                {
+                    return JsonConvert.DeserializeObject<T>(str);
+                }
+                catch
+                {
+                    // deserialization exception
+                }
+            }
+
+            return default;
+        }
+    }
     public static class DictionaryExtensions
     {
-        public static TVal TryGetValue<TKey, TVal>(this IDictionary<TKey, TVal> dict, TKey key) => dict.TryGetValue(key, out var val) ? val : default;
+        public static TVal TryGetValue<TKey, TVal>(this IDictionary<TKey, TVal> dict, TKey key) => dict != null ? dict.TryGetValue(key, out var val) ? val : default : default;
     }
 }

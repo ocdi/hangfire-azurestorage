@@ -146,6 +146,10 @@ namespace Hangfire.AzureStorage
        
 
         public string JobReference(string jobId) => $"{jobId}/job.json";
+
+        internal static (Job job, JobLoadException ex) TryLoadJob(HangfireJobModel model) 
+            => TryLoadJob(InvocationData.DeserializePayload(model.InvocationData));
+
         public string StateFolderReference(string jobId) => $"{jobId}/state";
         public string StateItemReference(string jobId, DateTime date, string stateName) => $"{jobId}/state/{date:o}{stateName}.json";
 
@@ -287,17 +291,7 @@ namespace Hangfire.AzureStorage
                 invocationData.Arguments = model.Arguments;
             }
 
-            Job job = null;
-            JobLoadException loadException = null;
-
-            try
-            {
-                job = invocationData.DeserializeJob();
-            }
-            catch (JobLoadException ex)
-            {
-                loadException = ex;
-            }
+            var (job, loadException) = TryLoadJob(invocationData);
 
             return new JobData
             {
@@ -306,6 +300,18 @@ namespace Hangfire.AzureStorage
                 CreatedAt = model.CreatedAt,
                 LoadException = loadException
             };
+        }
+
+        public static (Job job, JobLoadException ex) TryLoadJob(InvocationData invocationData)
+        {
+            try
+            {
+                return (invocationData.DeserializeJob(), null);
+            }
+            catch (JobLoadException ex)
+            {
+                return (null, ex);
+            }
         }
 
         private HangfireJobModel GetJobBlobModel(string jobId, AccessCondition condition = null)

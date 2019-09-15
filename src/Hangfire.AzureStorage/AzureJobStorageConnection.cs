@@ -387,8 +387,13 @@ namespace Hangfire.AzureStorage
 
         public int RemoveTimedOutServers(TimeSpan timeOut)
         {
-            return 0;
-            //Query(Storage.Servers)
+            var servers = Storage.Servers.CreateQuery<ServerEntity>().Where(a=>a.LastHeartbeat < DateTime.UtcNow - timeOut).ToArray();
+
+            AzureWriteOnlyTransaction.PerformBatchedOperation(Storage.Servers,
+                servers.Select(s => TableOperation.Delete(s)));
+            
+            return servers.Length;
+            
         }
 
 

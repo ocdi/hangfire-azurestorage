@@ -172,7 +172,7 @@ namespace Hangfire.AzureStorage
             });
         }
 
-        void PerformBatchedOperation(CloudTable table, IEnumerable<TableOperation> operations) {
+        public static void PerformBatchedOperation(CloudTable table, IEnumerable<TableOperation> operations) {
             var i = 0;
             var batch = new TableBatchOperation();
 

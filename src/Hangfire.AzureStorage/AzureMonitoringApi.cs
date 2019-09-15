@@ -7,6 +7,7 @@ using Hangfire.States;
 using Hangfire.Storage;
 using Hangfire.Storage.Monitoring;
 using Microsoft.Azure.Cosmos.Table;
+using Newtonsoft.Json;
 
 namespace Hangfire.AzureStorage
 {
@@ -79,12 +80,12 @@ namespace Hangfire.AzureStorage
 
         public long FetchedCount(string queue)
         {
-            throw new NotImplementedException();
+            return 0;
         }
 
         public JobList<FetchedJobDto> FetchedJobs(string queue, int from, int perPage)
         {
-            throw new NotImplementedException();
+            return new JobList<FetchedJobDto>(Enumerable.Empty<KeyValuePair<string, FetchedJobDto>>());
         }
 
         public StatisticsDto GetStatistics()
@@ -168,12 +169,20 @@ namespace Hangfire.AzureStorage
 
         public IList<ServerDto> Servers()
         {
-            throw new NotImplementedException();
+            return _storage.Storage.Servers.CreateQuery<ServerEntity>()
+                .Select(a => new ServerDto
+                {
+                    StartedAt = a.StartedAt,
+                    Heartbeat = a.LastHeartbeat,
+                    Name = a.RowKey,
+                    WorkersCount = a.WorkerCount,
+                    Queues = JsonConvert.DeserializeObject<string[]>(a.Queues)
+                }).ToList();
         }
 
         public IDictionary<DateTime, long> SucceededByDatesCount()
         {
-            throw new NotImplementedException();
+            return new Dictionary<DateTime, long>();
         }
 
         public JobList<SucceededJobDto> SucceededJobs(int from, int count)

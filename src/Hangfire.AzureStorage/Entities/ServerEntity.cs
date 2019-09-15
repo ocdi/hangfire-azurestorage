@@ -5,7 +5,6 @@ namespace Hangfire.AzureStorage.Entities
 {
     public class ServerEntity : TableEntity
     {
-        public DateTime? Heartbeat { get; set; }
         public int WorkerCount { get;  set; }
 
         /// <summary>

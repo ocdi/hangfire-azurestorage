@@ -82,6 +82,12 @@ namespace Hangfire.AzureStorage
 
         public override IMonitoringApi GetMonitoringApi() => new AzureMonitoringApi(new AzureJobStorageConnection(this));
 
+#pragma warning disable CS0618 // Type or member is obsolete
+        public override IEnumerable<IServerComponent> GetComponents()
+#pragma warning restore CS0618 // Type or member is obsolete
+        {
+            yield return new AzureStorageCleanupComponent(this, TimeSpan.FromMinutes(1));
+        }
 
         CloudTable IAzureJobStorageInternal.Servers => GetTable(SERVER_TABLE);
         CloudTable IAzureJobStorageInternal.Sets => GetTable(SETS_TABLE);

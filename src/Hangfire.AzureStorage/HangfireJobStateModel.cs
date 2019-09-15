@@ -7,8 +7,8 @@ namespace Hangfire.AzureStorage
     {
         public string Name { get;  set; }
         public string Reason { get;  set; }
-        public Dictionary<string, string> Data { get; internal set; }
-        public DateTime CreatedAt { get; internal set; }
+        public Dictionary<string, string> Data { get;  set; }
+        public DateTime CreatedAt { get;  set; }
     }
 
 }
